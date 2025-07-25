@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>📤 إرسال تلقائي لتليجرام</title>
+  <style>
+    body {
+      background: #121212;
+      color: white;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    input, textarea, button, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background: #1e88e5;
+      color: white;
+      cursor: pointer;
+    }
+    .log {
+      margin-top: 15px;
+      font-size: 14px;
+      background: #1f1f1f;
+      padding: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body><h2>📤 إرسال تلقائي لتليجرام</h2><textarea id="message" rows="4" placeholder="اكتب الرسالة هنا..."></textarea><select id="saved">
+  <option value="">🔖 تحميل نص محفوظ</option>
+</select>
+<button onclick="saveCurrentMessage()">💾 حفظ الرسالة الحالية</button><select id="language">
+  <option value="ar">عربي</option>
+  <option value="en">English</option>
+  <option value="fr">Français</option>
+  <option value="de">Deutsch</option>
+</select><input type="file" id="media" accept="image/*,video/*"><button onclick="translateAndSend()">🔁 ترجمة وإرسال</button> <button onclick="sendNow()">🚀 إرسال فوري</button> <button onclick="scheduleSend()">⏱️ جدولة بعد 10 ثواني</button> <button onclick="sendSticker()">🌟 إرسال استيكر</button>
+
+<div class="log" id="log"></div><script>
+const token = "6763761683:AAEa3YgCykVKtTspMK5QoRIjXh7gKf6UXaY";
+const channel = "@gainbux";
+
+function sendMessage(text) {
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ chat_id: channel, text: text, parse_mode: "HTML" })
+  }).then(() => log("✅ تم الإرسال"))
+    .catch(() => log("❌ فشل الإرسال"));
+  saveMessage(text);
+}
+
+function sendNow() {
+  const msg = document.getElementById("message").value;
+  if (!msg) return log("⚠️ لا توجد رسالة");
+  sendMessage(msg);
+  sendMedia();
+}
+
+function scheduleSend() {
+  log("⏳ سيتم الإرسال بعد 10 ثواني...");
+  setTimeout(sendNow, 10000);
+}
+
+function translateAndSend() {
+  const msg = document.getElementById("message").value;
+  const lang = document.getElementById("language").value;
+  if (!msg) return log("⚠️ لا توجد رسالة");
+
+  fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(msg)}`)
+    .then(res => res.json())
+    .then(data => {
+      const translated = data[0][0][0];
+      sendMessage(`📤 <b>رسالة مترجمة:</b>\n${translated}`);
+    })
+    .catch(() => log("❌ فشل الترجمة"));
+}
+
+function sendSticker() {
+  const url = `https://api.telegram.org/bot${token}/sendSticker`;
+  fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      chat_id: channel,
+      sticker: "CAACAgUAAxkBAAEE0C5lmpbtCvdjZESK-jj2d3UQgE3VfgACVAIAAiM1iVcgM0nFlW5iQyME"
+    })
+  }).then(() => log("🧸 تم إرسال الاستيكر"))
+    .catch(() => log("❌ فشل إرسال الاستيكر"));
+}
+
+function sendMedia() {
+  const fileInput = document.getElementById("media");
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("chat_id", channel);
+  formData.append(file.type.startsWith("video") ? "video" : "photo", file);
+
+  const url = `https://api.telegram.org/bot${token}/${file.type.startsWith("video") ? "sendVideo" : "sendPhoto"}`;
+
+  fetch(url, { method: "POST", body: formData })
+    .then(() => log("📷 تم إرسال الوسائط"))
+    .catch(() => log("❌ فشل إرسال الوسائط"));
+}
+
+function saveMessage(msg) {
+  if (!msg) return;
+  let saved = JSON.parse(localStorage.getItem("saved_msgs") || "[]");
+  if (!saved.includes(msg)) saved.push(msg);
+  localStorage.setItem("saved_msgs", JSON.stringify(saved));
+  loadSavedMessages();
+}
+
+function saveCurrentMessage() {
+  const msg = document.getElementById("message").value;
+  saveMessage(msg);
+  log("💾 تم حفظ الرسالة");
+}
+
+function loadSavedMessages() {
+  const saved = JSON.parse(localStorage.getItem("saved_msgs") || "[]");
+  const select = document.getElementById("saved");
+  select.innerHTML = '<option value="">🔖 تحميل نص محفوظ</option>';
+  saved.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m.length > 50 ? m.slice(0, 50) + "..." : m;
+    select.appendChild(opt);
+  });
+}
+
+document.getElementById("saved").addEventListener("change", function() {
+  if (this.value) document.getElementById("message").value = this.value;
+});
+
+function log(text) {
+  document.getElementById("log").innerText = text;
+}
+
+window.onload = loadSavedMessages;
+</script></body>
+</html>
